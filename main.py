@@ -1,9 +1,11 @@
 import pygame
 from player import Player, Coin
+from functions import draw_text
 
 pygame.init()
 screen_width = 1280
 screen_height = 720
+font = pygame.font.SysFont('Futura', 30)
 screen = pygame.display.set_mode((screen_width, screen_height))
 FPS = 60
 clock = pygame.time.Clock()
@@ -21,6 +23,8 @@ while run:
     player.move(moving_left, moving_right)
     coin_group.draw(screen)
     coin_group.update()
+    draw_text(screen, 'COIN: ', font, (255, 255, 255), 10, 35)
+    draw_text(screen, str(player.coin), font, (255, 255, 255), 100, 35)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
