@@ -24,6 +24,8 @@ while run:
                 moving_left = True
             if event.key == pygame.K_d:
                 moving_right = True
+            if event.key == pygame.K_w:
+                player.jump = True
             if event.key == pygame.K_ESCAPE:
                 run = False
         if event.type == pygame.KEYUP:

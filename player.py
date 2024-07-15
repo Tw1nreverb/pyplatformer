@@ -1,5 +1,7 @@
 import pygame
 
+gravity = 0.75
+
 
 class Player(pygame.sprite.Sprite):
 
@@ -13,6 +15,10 @@ class Player(pygame.sprite.Sprite):
         self.speed = speed
         self.flip = False
         self.direction = 1
+        self.jump = False
+        self.life = True
+        self.vel_y = 0
+        self.in_air = False
 
     def move(self, moving_left, moving_right):
         dx = 0
@@ -25,6 +31,17 @@ class Player(pygame.sprite.Sprite):
             dx = self.speed
             self.flip = True
             self.direction = -1
+        if self.jump == True and not (self.in_air):
+            self.vel_y = -11
+            self.jump = False
+            self.in_air = True
+        self.vel_y += gravity
+        if self.vel_y > 10:
+            self.vel_y
+        dy += int(self.vel_y)
+        if self.rect.bottom + dy > 300:
+            dy = 300 - self.rect.bottom
+            self.in_air = False
         self.rect.x += dx
         self.rect.y += dy
 
