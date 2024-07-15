@@ -14,6 +14,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.center = (x, y)
         self.speed = speed
         self.flip = False
+        self.coin = 0
         self.direction = 1
         self.jump = False
         self.life = True
@@ -48,3 +49,20 @@ class Player(pygame.sprite.Sprite):
     def draw(self, screen):
         screen.blit(pygame.transform.flip(self.img, self.flip, False),
                     self.rect)
+
+
+class Coin(pygame.sprite.Sprite):
+
+    def __init__(self, x, y, player):
+        super().__init__()
+        self.player = player
+        self.image = pygame.image.load('static/coin.png')
+        self.image = pygame.transform.scale(self.image, (int(
+            self.image.get_width() * 0.1), int(self.image.get_height() * 0.1)))
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + 50 // 2, y + (50 - self.image.get_height()))
+
+    def update(self):
+        if pygame.sprite.collide_rect(self, self.player):
+            self.player.coin += 1
+            self.kill()
