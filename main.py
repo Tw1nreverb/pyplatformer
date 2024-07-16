@@ -2,6 +2,7 @@ import pygame
 from player import Player, Coin
 from functions import draw_text
 import button
+import inputbox
 #Constans
 pygame.init()
 screen_width = 1280
@@ -31,6 +32,13 @@ player = Player(500, 300, 0.1, 5)
 coin = Coin(400, 200, player)
 coin_group = pygame.sprite.Group()
 coin_group.add(coin)
+#input boxes
+login_input_box = inputbox.InputBox(550, 300, 140, 32)
+password_input_box = inputbox.InputBox(550, 350, 140, 32)
+login_input_box1 = inputbox.InputBox(550, 300, 140, 32)
+password_input_box1 = inputbox.InputBox(550, 350, 140, 32)
+input_boxes = [login_input_box, password_input_box]
+input_registration_boxes = [login_input_box1, password_input_box1]
 while run:
     clock.tick(FPS)
     screen.fill((123, 4, 5))
@@ -48,15 +56,44 @@ while run:
             if quit_button.draw(screen):
                 run = False
             if user_button.draw(screen):
-                menu_state = 'user'
+                menu_state = 'login'
             if question_button.draw(screen):
                 menu_state = 'question'
         if menu_state == 'question':
             draw_text(screen, 'A - влево, D - вправо, W - прыжок, Esc - пауза',
                       font, (0, 0, 0), 400, 300)
-            back_button = button.Button(900, 250, back_img, 0.2)
+            back_button = button.Button(1000, 250, back_img, 0.2)
             if back_button.draw(screen):
                 menu_state = 'main'
+        if menu_state == 'login':
+            draw_text(screen, "Зайдите в систему", font, (0, 0, 0), 557, 250)
+            accept_img = pygame.image.load(
+                "static/buttons/accept.png").convert_alpha()
+            accept_button = button.Button(780, 280, accept_img, 0.2)
+            for box in input_boxes:
+                box.update()
+            for box in input_boxes:
+                box.draw(screen)
+            if accept_button.draw(screen):
+                pass
+            draw_text(screen, "Если у вас нет аккаунта, нажмите сюда -", font,
+                      (0, 0, 0), 450, 450)
+            sign_up_img = pygame.image.load(
+                "static/buttons/signup.png").convert_alpha()
+            sign_up_button = button.Button(865, 445, sign_up_img, 0.1)
+            if sign_up_button.draw(screen):
+                menu_state = 'registration'
+        if menu_state == 'registration':
+            draw_text(screen, "Зарегестрируйтесь", font, (0, 0, 0), 557, 250)
+            accept_img = pygame.image.load(
+                "static/buttons/accept.png").convert_alpha()
+            accept_button = button.Button(780, 280, accept_img, 0.2)
+            for box in input_registration_boxes:
+                box.update()
+            for box in input_registration_boxes:
+                box.draw(screen)
+            if accept_button.draw(screen):
+                pass
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -76,5 +113,11 @@ while run:
                 moving_left = False
             if event.key == pygame.K_d:
                 moving_right = False
+        if menu_state == 'login':
+            for box in input_boxes:
+                box.handle_event(event)
+        if menu_state == 'registration':
+            for box in input_registration_boxes:
+                box.handle_event(event)
     pygame.display.update()
 pygame.quit()
