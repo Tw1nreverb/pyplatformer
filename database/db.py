@@ -1,5 +1,5 @@
 import psycopg2
-from config import host, user, password, db_name
+from database.config import host, user, password, db_name
 from werkzeug.security import generate_password_hash, check_password_hash
 
 
@@ -17,8 +17,8 @@ def register_user(username, passwor):
                 """INSERT INTO public."User"
                 ("username","password") VALUES (%s,%s)
             """, (username, hashed_password))
-            print("[INFO] Data was succefully inserted")
         connection.commit()
+        return True
     except Exception as ex:
         print("[INFO] Error while working with PostgreSql", ex)
     finally:
@@ -43,11 +43,11 @@ def login_user(username, passwor):
             if result:
                 hashed_password = result[0]
                 if check_password_hash(hashed_password, passwor):
-                    print("Login succes")
+                    return True
                 else:
-                    print("login not succes")
+                    return False
             else:
-                print("aboba")
+                return False
     except Exception as ex:
         print("[INFO] Error while working with PostgreSql", ex)
     finally:

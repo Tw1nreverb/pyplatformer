@@ -3,14 +3,28 @@ from player import Player, Coin
 from functions import draw_text
 import button
 import inputbox
+from database.db import register_user, login_user
+import csv
 #Constans
 pygame.init()
+pygame.display.set_caption("Summer Practice platformer")
 screen_width = 1280
 screen_height = 720
+ROWS = 16
+COLS = 150
+TILE_TYPES = 17
+level = 0
+TILE_SIZE = screen_height // ROWS
 font = pygame.font.SysFont('Futura', 30)
 screen = pygame.display.set_mode((screen_width, screen_height))
 FPS = 60
 clock = pygame.time.Clock()
+#tile list
+tile_list = []
+for x in range(TILE_TYPES):
+    img = pygame.image.load(f'static/tile/{x}.png')
+    img = pygame.transform.scale(img, (TILE_SIZE, TILE_SIZE))
+    tile_list.append(img)
 #States
 run = True
 moving_left = False
@@ -28,10 +42,67 @@ user_button = button.Button(450, 270, user_img, 0.25)
 question_button = button.Button(650, 270, question_img, 0.25)
 quit_button = button.Button(850, 270, quit_img, 0.25)
 #Game stf
+
+
+class World:
+
+    def __init__(self) -> None:
+        self.obstacle_list = []
+
+    def process_data(self, data):
+        for y, row in enumerate(data):
+            for x, tile in enumerate(row):
+                if tile >= 0:
+                    img = tile_list[tile]
+                    img_rect = img.get_rect()
+                    img_rect.x = x * TILE_SIZE
+                    img_rect.y = y * TILE_SIZE
+                    tile_data = (img, img_rect)
+                    if tile >= 0 and tile <= 8:
+                        self.obstacle_list.append(tile_data)
+                    elif tile >= 9 and tile <= 10:
+                        water = Water(img, x * TILE_SIZE, y * TILE_SIZE)
+                        water_group.add(water)
+                    elif tile > 11 and tile <= 14:
+                        decoration = Decoration(img, x * TILE_SIZE,
+                                                y * TILE_SIZE)
+                        decoration_group.add(decoration)
+                    elif tile == 15:
+                        coin = Coin(x * TILE_SIZE, y * TILE_SIZE, player)
+                        coin_group.add(coin)
+                    elif tile == 16:
+
+                        pass
+
+    def draw(self):
+        for tile in self.obstacle_list:
+            screen.blit(tile[0], tile[1])
+
+
+class Water(pygame.sprite.Sprite):
+
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2,
+                            y + (TILE_SIZE - self.image.get_height()))
+
+
+class Decoration(pygame.sprite.Sprite):
+
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2,
+                            y + (TILE_SIZE - self.image.get_height()))
+
+
+decoration_group = pygame.sprite.Group()
 player = Player(500, 300, 0.1, 5)
-coin = Coin(400, 200, player)
 coin_group = pygame.sprite.Group()
-coin_group.add(coin)
+water_group = pygame.sprite.Group()
 #input boxes
 login_input_box = inputbox.InputBox(550, 300, 140, 32)
 password_input_box = inputbox.InputBox(550, 350, 140, 32)
@@ -39,13 +110,32 @@ login_input_box1 = inputbox.InputBox(550, 300, 140, 32)
 password_input_box1 = inputbox.InputBox(550, 350, 140, 32)
 input_boxes = [login_input_box, password_input_box]
 input_registration_boxes = [login_input_box1, password_input_box1]
+#login
+is_login = False
+#world data
+world_data = []
+for row in range(ROWS):
+    r = [-1] * COLS
+    world_data.append(r)
+with open(f'level{level}_data.csv', newline='') as csvfile:
+    reader = csv.reader(csvfile, delimiter=',')
+    for x, row in enumerate(reader):
+        for y, tile in enumerate(row):
+            world_data[x][y] = int(tile)
+world = World()
+world.process_data(world_data)
 while run:
     clock.tick(FPS)
     screen.fill((123, 4, 5))
+    world.draw()
     player.draw(screen)
     player.move(moving_left, moving_right)
     coin_group.draw(screen)
     coin_group.update()
+    water_group.draw(screen)
+    water_group.update()
+    decoration_group.draw(screen)
+    decoration_group.update()
     draw_text(screen, 'COIN: ', font, (255, 255, 255), 10, 35)
     draw_text(screen, str(player.coin), font, (255, 255, 255), 100, 35)
     if game_paused == True:
@@ -65,7 +155,7 @@ while run:
             back_button = button.Button(1000, 250, back_img, 0.2)
             if back_button.draw(screen):
                 menu_state = 'main'
-        if menu_state == 'login':
+        if menu_state == 'login' and not (is_login):
             draw_text(screen, "Зайдите в систему", font, (0, 0, 0), 557, 250)
             accept_img = pygame.image.load(
                 "static/buttons/accept.png").convert_alpha()
@@ -75,7 +165,9 @@ while run:
             for box in input_boxes:
                 box.draw(screen)
             if accept_button.draw(screen):
-                pass
+                if login_user(input_boxes[0].text, input_boxes[1].text):
+                    menu_state = 'main'
+                    is_login = True
             draw_text(screen, "Если у вас нет аккаунта, нажмите сюда -", font,
                       (0, 0, 0), 450, 450)
             sign_up_img = pygame.image.load(
@@ -83,6 +175,13 @@ while run:
             sign_up_button = button.Button(865, 445, sign_up_img, 0.1)
             if sign_up_button.draw(screen):
                 menu_state = 'registration'
+        if menu_state == 'login' and is_login:
+            if input_boxes[0]:
+                draw_text(screen, "Ваше имя: " + input_boxes[0].text, font,
+                          (0, 0, 0), 200, 200)
+            back_button = button.Button(1000, 250, back_img, 0.2)
+            if back_button.draw(screen):
+                menu_state = 'main'
         if menu_state == 'registration':
             draw_text(screen, "Зарегестрируйтесь", font, (0, 0, 0), 557, 250)
             accept_img = pygame.image.load(
@@ -93,7 +192,9 @@ while run:
             for box in input_registration_boxes:
                 box.draw(screen)
             if accept_button.draw(screen):
-                pass
+                if register_user(input_registration_boxes[0].text,
+                                 input_registration_boxes[1].text):
+                    menu_state = 'login'
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
