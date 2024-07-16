@@ -7,6 +7,14 @@ import csv
 #Constans
 pygame.init()
 gravity = 0.45
+scroll_thresh = 200
+screen_scroll = 0
+bg_scroll = 0
+screen_width = 1280
+screen_height = 720
+screen = pygame.display.set_mode((screen_width, screen_height))
+game_paused = True
+menu_state = 'main'
 
 
 class Player(pygame.sprite.Sprite):
@@ -30,6 +38,7 @@ class Player(pygame.sprite.Sprite):
         self.height = self.img.get_height()
 
     def move(self, moving_left, moving_right):
+        screen_scroll = 0
         dx = 0
         dy = 0
         if moving_left:
@@ -63,6 +72,10 @@ class Player(pygame.sprite.Sprite):
                     dy = tile[1].top - self.rect.bottom
         self.rect.x += dx
         self.rect.y += dy
+        if self.rect.right > screen_width - scroll_thresh or self.rect.left < scroll_thresh:
+            self.rect.x -= dx
+            screen_scroll = -dx
+        return screen_scroll
 
     def draw(self, screen):
         screen.blit(pygame.transform.flip(self.img, self.flip, False),
@@ -81,22 +94,37 @@ class Coin(pygame.sprite.Sprite):
         self.rect.midtop = (x + 50 // 2, y + (50 - self.image.get_height()))
 
     def update(self):
+        self.rect.x += screen_scroll
         if pygame.sprite.collide_rect(self, self.player):
             self.player.coin += 1
             self.kill()
 
 
 pygame.display.set_caption("Summer Practice platformer")
-screen_width = 1280
-screen_height = 720
 ROWS = 16
 COLS = 150
 TILE_TYPES = 17
 level = 0
 TILE_SIZE = screen_height // ROWS
 font = pygame.font.SysFont('Futura', 30)
-screen = pygame.display.set_mode((screen_width, screen_height))
 FPS = 60
+
+pine1_img = pygame.image.load('static/background/pine1.png').convert_alpha()
+pine2_img = pygame.image.load('static/background/pine2.png').convert_alpha()
+mountain_img = pygame.image.load(
+    'static/background/mountain.png').convert_alpha()
+sky_img = pygame.image.load('static/background/sky_cloud.png').convert_alpha()
+
+
+def draw_bg():
+    screen.fill((117, 214, 255))
+    screen.blit(sky_img, (0, 0))
+    screen.blit(mountain_img,
+                (0, screen_height - mountain_img.get_height() - 300))
+    screen.blit(pine1_img, (0, screen_height - pine1_img.get_height() - 150))
+    screen.blit(pine2_img, (0, screen_height - pine2_img.get_height()))
+
+
 clock = pygame.time.Clock()
 #tile list
 tile_list = []
@@ -108,8 +136,6 @@ for x in range(TILE_TYPES):
 run = True
 moving_left = False
 moving_right = False
-game_paused = True
-menu_state = 'main'
 #Buttons
 play_img = pygame.image.load("static/buttons/play.png").convert_alpha()
 user_img = pygame.image.load("static/buttons/user.png").convert_alpha()
@@ -153,8 +179,12 @@ class World:
 
                         pass
 
+    def clear(self):
+        self.obstacle_list = []
+
     def draw(self):
         for tile in self.obstacle_list:
+            tile[1][0] += screen_scroll
             screen.blit(tile[0], tile[1])
 
 
@@ -167,6 +197,9 @@ class Water(pygame.sprite.Sprite):
         self.rect.midtop = (x + TILE_SIZE // 2,
                             y + (TILE_SIZE - self.image.get_height()))
 
+    def update(self):
+        self.rect.x += screen_scroll
+
 
 class Decoration(pygame.sprite.Sprite):
 
@@ -176,6 +209,9 @@ class Decoration(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.midtop = (x + TILE_SIZE // 2,
                             y + (TILE_SIZE - self.image.get_height()))
+
+    def update(self):
+        self.rect.x += screen_scroll
 
 
 decoration_group = pygame.sprite.Group()
@@ -205,10 +241,13 @@ world = World()
 world.process_data(world_data)
 while run:
     clock.tick(FPS)
-    screen.fill((123, 4, 5))
+    draw_bg()
+    if player.rect.y > 1000:
+        menu_state = 'main'
+        game_paused = True
     world.draw()
     player.draw(screen)
-    player.move(moving_left, moving_right)
+    screen_scroll = player.move(moving_left, moving_right)
     coin_group.draw(screen)
     coin_group.update()
     water_group.draw(screen)
@@ -221,6 +260,9 @@ while run:
         screen.fill((117, 214, 255))
         if menu_state == 'main':
             if play_button.draw(screen):
+                player.rect.x = 500
+                player.rect.y = 300
+                player.coin = 0
                 game_paused = False
             if quit_button.draw(screen):
                 run = False
