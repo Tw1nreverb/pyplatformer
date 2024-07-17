@@ -239,10 +239,34 @@ with open(f'level{level}_data.csv', newline='') as csvfile:
             world_data[x][y] = int(tile)
 world = World()
 world.process_data(world_data)
+
+
+def reset_level():
+    coin_group.empty()
+    decoration_group.empty()
+    water_group.empty()
+
+    #create empty tile list
+    data = []
+    for row in range(ROWS):
+        r = [-1] * COLS
+        data.append(r)
+
+    return data
+
+
 while run:
     clock.tick(FPS)
     draw_bg()
     if player.rect.y > 1000:
+        world_data = reset_level()
+        with open(f'level{level}_data.csv', newline='') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',')
+            for x, row in enumerate(reader):
+                for y, tile in enumerate(row):
+                    world_data[x][y] = int(tile)
+        world = World()
+        world.process_data(world_data)
         menu_state = 'main'
         game_paused = True
     world.draw()
