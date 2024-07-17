@@ -56,4 +56,52 @@ def login_user(username, passwor):
             print("[INFO] PostgreSql connection closed")
 
 
-login_user("Vladislav", "qwerty123")
+def check_coins(username):
+    try:
+        connection = psycopg2.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=db_name,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """Select "Game"."game_id","Game"."coin" from public."User" Join public."Game" on "User"."User_id"="Game"."user_id" Where "User"."username" 
+                = %s""", (username, ))
+            result = cursor.fetchall()
+            if result:
+                return result
+            else:
+                return -1
+    except Exception as ex:
+        print("[INFO] Error while working with PostgreSql", ex)
+    finally:
+        if connection:
+            connection.close()
+            print("[INFO] PostgreSql connection closed")
+
+
+def add_stats(username, coins, game_id):
+    try:
+        connection = psycopg2.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=db_name,
+        )
+        user_id = None
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """Select "User_id" from "User" WHERE "username" = %s""",
+                (username, ))
+            user_id = cursor.fetchone()
+        with connection.cursor() as cursor:
+            cursor.execute("""INSERT INTO "Game" VALUES (%s,%s,%s)""",
+                           (user_id, coins, game_id))
+            connection.commit()
+    except Exception as ex:
+        print("[INFO] Error while working with PostgreSql", ex)
+    finally:
+        if connection:
+            connection.close()
+            print("[INFO] PostgreSql connection closed")

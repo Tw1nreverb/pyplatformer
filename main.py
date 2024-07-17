@@ -2,7 +2,7 @@ import pygame
 from functions import draw_text
 import button
 import inputbox
-from database.db import register_user, login_user
+from database.db import add_stats, check_coins, register_user, login_user
 import csv
 #Constans
 pygame.init()
@@ -15,6 +15,8 @@ screen_height = 720
 screen = pygame.display.set_mode((screen_width, screen_height))
 game_paused = True
 menu_state = 'main'
+level = 0
+max_levels = 1
 
 
 class Player(pygame.sprite.Sprite):
@@ -32,6 +34,7 @@ class Player(pygame.sprite.Sprite):
         self.direction = 1
         self.jump = False
         self.life = True
+        self.level_complete = False
         self.vel_y = 0
         self.in_air = False
         self.width = self.img.get_width()
@@ -103,12 +106,10 @@ class Coin(pygame.sprite.Sprite):
 pygame.display.set_caption("Summer Practice platformer")
 ROWS = 16
 COLS = 150
-TILE_TYPES = 17
-level = 0
+TILE_TYPES = 18
 TILE_SIZE = screen_height // ROWS
 font = pygame.font.SysFont('Futura', 30)
 FPS = 60
-
 pine1_img = pygame.image.load('static/background/pine1.png').convert_alpha()
 pine2_img = pygame.image.load('static/background/pine2.png').convert_alpha()
 mountain_img = pygame.image.load(
@@ -147,6 +148,7 @@ user_button = button.Button(450, 270, user_img, 0.25)
 question_button = button.Button(650, 270, question_img, 0.25)
 quit_button = button.Button(850, 270, quit_img, 0.25)
 #Game stf
+game_id = 1
 
 
 class World:
@@ -176,8 +178,10 @@ class World:
                         coin = Coin(x * TILE_SIZE, y * TILE_SIZE, player)
                         coin_group.add(coin)
                     elif tile == 16:
-
                         pass
+                    elif tile == 17:
+                        exit = Exit(img, x * TILE_SIZE, y * TILE_SIZE)
+                        exit_group.add(exit)
 
     def clear(self):
         self.obstacle_list = []
@@ -214,10 +218,26 @@ class Decoration(pygame.sprite.Sprite):
         self.rect.x += screen_scroll
 
 
+class Exit(pygame.sprite.Sprite):
+
+    def __init__(self, img, x, y):
+        pygame.sprite.Sprite.__init__(self)
+        self.image = img
+        self.rect = self.image.get_rect()
+        self.rect.midtop = (x + TILE_SIZE // 2,
+                            y + (TILE_SIZE - self.image.get_height()))
+
+    def update(self):
+        self.rect.x += screen_scroll
+        if pygame.sprite.collide_rect(player, self):
+            player.level_complete = True
+
+
 decoration_group = pygame.sprite.Group()
 player = Player(500, 300, 1.5, 5)
 coin_group = pygame.sprite.Group()
 water_group = pygame.sprite.Group()
+exit_group = pygame.sprite.Group()
 #input boxes
 login_input_box = inputbox.InputBox(550, 300, 140, 32)
 password_input_box = inputbox.InputBox(550, 350, 140, 32)
@@ -245,7 +265,7 @@ def reset_level():
     coin_group.empty()
     decoration_group.empty()
     water_group.empty()
-
+    exit_group.empty()
     #create empty tile list
     data = []
     for row in range(ROWS):
@@ -258,17 +278,43 @@ def reset_level():
 while run:
     clock.tick(FPS)
     draw_bg()
+    if level > max_levels:
+        game_paused = True
+        menu_state = 'End'
+    exit_group.update()
+    exit_group.draw(screen)
+    if player.level_complete:
+        level += 1
+        world_data = reset_level()
+        if level <= max_levels:
+            with open(f'level{1}_data.csv', newline='') as csvfile:
+                reader = csv.reader(csvfile, delimiter=',')
+                for x, row in enumerate(reader):
+                    for y, tile in enumerate(row):
+                        world_data[x][y] = int(tile)
+            world = World()
+            world.process_data(world_data)
+            player.rect.x = 100
+            screen_scroll = 0
+            player.level_complete = False
     if player.rect.y > 1000:
         world_data = reset_level()
-        with open(f'level{level}_data.csv', newline='') as csvfile:
-            reader = csv.reader(csvfile, delimiter=',')
-            for x, row in enumerate(reader):
-                for y, tile in enumerate(row):
-                    world_data[x][y] = int(tile)
-        world = World()
-        world.process_data(world_data)
-        menu_state = 'main'
-        game_paused = True
+        if is_login:
+            add_stats(input_boxes[0].text, player.coin, game_id)
+            game_id = game_id + 1
+        else:
+            pass
+        if level <= max_levels:
+            with open(f'level{level}_data.csv', newline='') as csvfile:
+                reader = csv.reader(csvfile, delimiter=',')
+                for x, row in enumerate(reader):
+                    for y, tile in enumerate(row):
+                        world_data[x][y] = int(tile)
+            world = World()
+            world.process_data(world_data)
+            player.rect.y = 300
+            menu_state = 'main'
+            game_paused = True
     world.draw()
     player.draw(screen)
     screen_scroll = player.move(moving_left, moving_right)
@@ -280,6 +326,7 @@ while run:
     decoration_group.update()
     draw_text(screen, 'COIN: ', font, (255, 255, 255), 10, 35)
     draw_text(screen, str(player.coin), font, (255, 255, 255), 100, 35)
+
     if game_paused == True:
         screen.fill((117, 214, 255))
         if menu_state == 'main':
@@ -324,7 +371,15 @@ while run:
             if input_boxes[0]:
                 draw_text(screen, "Ваше имя: " + input_boxes[0].text, font,
                           (0, 0, 0), 200, 200)
+            stats = check_coins(input_boxes[0].text)
+            draw_text(screen, "Ваша статистика:", font, (0, 0, 0), 200, 300)
+            for i in range(len(stats)):
+                draw_text(
+                    screen,
+                    f"Игра: {stats[i][0]}, Количество монет:{stats[i][1]} ",
+                    font, (0, 0, 0), 200, 400 + i * 50)
             back_button = button.Button(1000, 250, back_img, 0.2)
+
             if back_button.draw(screen):
                 menu_state = 'main'
         if menu_state == 'registration':
@@ -340,7 +395,9 @@ while run:
                 if register_user(input_registration_boxes[0].text,
                                  input_registration_boxes[1].text):
                     menu_state = 'login'
-
+        if menu_state == 'End':
+            draw_text(screen, "Пока что на этом все", font, (0, 0, 0), 557,
+                      250)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             run = False
